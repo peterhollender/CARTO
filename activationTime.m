@@ -1,0 +1,13 @@
+function ColorMap = activationTime(cLim_A,cLim_V,InputColorMap);
+dcA = diff(cLim_A);
+dcV = diff(cLim_V);
+totalCLim = [cLim_A(1) cLim_V(2)];
+N = size(InputColorMap,1);
+frac = dcA./(dcA+dcV);
+cMapA = InputColorMap(1:floor(frac*N),:);
+cMapV = InputColorMap(ceil(frac*N):end,:);
+N1 = size(cMapA);
+N2 = size(cMapV);
+X = linspace(totalCLim(1),totalCLim(2),N);
+IDX = interp1([cLim_A cLim_V],[0 ((N-1)*frac) ((N-1)*frac) N-1],X,'linear');
+ColorMap = InputColorMap(round(IDX)+1,:);

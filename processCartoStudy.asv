@@ -1,0 +1,173 @@
+function CARTO = processCartoStudy(xmlFileName,resFileDataPath)
+tic;
+[CartoDataPath FileName ext] = fileparts(xmlFileName);
+C0 = textscan(FileName,'%s%s%s%s%s%s%s%s%s',1,'delimiter',' _-.','MultipleDelimsAsOne',1);
+C1 = [C0{:}];
+timeStamp = sprintf('%s',C1{[5,3,4,6,7,8]});
+clear C1 C0
+matFileName = fullfile(CartoDataPath,sprintf('CARTO_%s.mat',timeStamp));
+[pth fname ext] = fileparts(matFileName);
+matFileName = fullfile(pth,[fname '.mat']);
+if ~exist(matFileName,'file')
+toc1 = toc;
+fprintf('Parsing %s...',xmlFileName);
+%matFileName = xml2mat(xmlFileName,matFileName);
+xmlData = parseXML(xmlFileName);
+fprintf('Saving %s...',matFileName);
+save(matFileName,'-struct','xmlStruct');
+fprintf('done %0.1fs\n',toc-toc1);
+else
+toc1 = toc;
+fprintf('Loading %s...',matFileName);
+xmlData = load(matFileName);
+fprintf('done (%0.2fs)\n',toc-toc1)
+end
+
+%%
+
+UserMapIndexFile = fullfile(resFileDataPath,'CartoMapIndexData.mat');
+if exist(UserMapIndexFile,'file')
+    UserMapIndex = load(UserMapIndexFile);
+    fprintf('Map Index Data Found!\n')
+    getCartoMapInfo(xmlData);
+    UserMapIndex
+    s = 'x';
+    while ~any(strcmpi(s,{'y','n',''}));
+        s = input('Proceed with this map y/n [y]:','s');
+    end
+    if strcmpi(s,'n')
+    UserMapIndex = assignMapIndices(xmlData);
+    save(UserMapIndexFile,'-struct','UserMapIndex');     
+    end
+else
+    UserMapIndex = assignMapIndices(xmlData);
+    save(UserMapIndexFile,'-struct','UserMapIndex');
+end
+
+
+toc1 = toc;
+clear CARTO
+for MeshIndex = 1:length(UserMapIndex.Meshes)
+MeshFile{MeshIndex} = getCartoMeshFile(xmlData,UserMapIndex.Meshes(MeshIndex));
+fprintf('Retrieving Mesh...')
+CARTO.Mesh(MeshIndex) = loadMesh(fullfile(CartoDataPath,MeshFile{MeshIndex}));
+end
+fprintf('Tags...')
+CARTO.Tags = getCartoTags(xmlData);
+fprintf('Points...')
+CARTO.CartoPoints = getCartoPoints(xmlData,UserMapIndex.CartoPoints);
+fprintf('Contours...')
+CARTO.Contours = getCartoContours(xmlData,UserMapIndex.Contours);
+fprintf('Frames...')
+CARTO.Frames = getCartoFrames(xmlData,UserMapIndex.Frames);
+fprintf('done (%0.2fs)\n',toc-toc1)
+
+figure(200);clf;
+if isfield(CARTO,'Mesh')
+    for MeshIndex = 1:length(CARTO.Mesh)
+        CARTO.MeshHandle(MeshIndex) = drawCartoMesh(CARTO.Mesh(MeshIndex),'LAT','facelight','gouraud','EdgeColor','none');
+    end
+end
+hold on
+
+resFiles = dir(fullfile(resFileDataPath,'res*'));  
+NumFrames = length(CARTO.Frames);
+NumRes = length(resFiles);
+NumContours = length(CARTO.Contours);
+
+if NumRes == NumFrames && NumRes == NumContours
+    fprintf('Frames, Contours, and ARFI Data Align!\n')
+    FrameIndices = 1:NumFrames;
+    ContourIndices = 1:NumContours;
+    ResIndices = 1:NumRes;
+elseif NumRes == NumFrames && NumRes ~= NumContours
+    fprintf('Frames and ARFI data align, but Contours do not. Attempting to extract timestamps from Contours...\n')
+    Comments = {CARTO.Contours.Comment}';
+    ContourIndices = 1:NumContours;
+    ResIndices = zeros(1,NumContours);
+        for ResIdx = 1:NumRes
+            resFileName = resFiles(ResIdx).name;
+            timeidx = regexp(resFileName,'\d\d\d\d\d\d\d\d\d\d\d\d\d');
+            endidx = timeidx +13;
+            resTimeStamp{ResIdx} = char(resFileName(timeidx:endidx));
+        end
+        for CIdx = 1:NumContours
+            Comment = Comments{CIdx};
+            timeidx = regexp(Comment,'\d\d\d\d\d\d\d\d\d\d\d\d\d');
+            if ~isempty(timeidx)
+            endidx = timeidx +13;
+            contourTimeStamp{CIdx} = char(Comment(timeidx:endidx));
+            ResIndices(CIdx) = find(strcmpi(contourTimeStamp{CIdx},resTimeStamp));
+            else
+            contourTimeStamp{CIdx} = '';
+            end
+        end
+        validIdx = find(ResIndices);
+        ResIndices1 = ResIndices;
+        for i = 1:NumContours
+            if ResIndices(i) == 0;
+                lookback = find(ResIndices(i:-1:1),1,'first');
+                if isempty(lookback)
+                    lookforward = find(ResIndices(i:end),1,'first');
+                    ResIndices1(i) = ResIndices(i+lookforward-1)-lookforward+1;
+                else
+                    ResIndices1(i) = ResIndices(i-lookback+1)+lookback-1;
+                end
+            else
+                ResIndices1(i) = ResIndices(i);
+            end
+        end
+        ResIndices = ResIndices1;
+        clear ResIndices1;
+        FrameIndices = ResIndices;
+else
+    ResIndices = [];
+    FrameIndices = 1:NumFrames;
+    ContourIndices = 1:NumContours;
+end
+    
+for FrameIdx = FrameIndices;
+Frame = CARTO.Frames(FrameIdx);
+[xt yt zt] = applyTransformation(Frame.X,Frame.Y,Frame.Z,Frame.XducerToWorldMatrix);
+CARTO.FrameHandle(FrameIdx) = patch(xt,yt,zt,'c','faceColor','none','edgecolor','c','edgealpha',0.5,'linewidth',1);
+end
+for ContourIdx = ContourIndices
+Contour = CARTO.Contours(ContourIdx);
+CARTO.ContourHandle(ContourIdx) = plot3(Contour.X,Contour.Y,Contour.Z,'w-','linewidth',1);
+end
+ARFIHandle = zeros(1,length(ResIndices));
+%ResIndices = 6;
+for i = 1:length(ResIndices);
+ResIdx = ResIndices(i);
+if ~resFiles(ResIdx).isdir
+im = load(fullfile(DataPath,'res',resFiles(ResIdx).name));
+cdata = im.arfidata(:,:,15);
+bmodedata0 = interp1(im.btheta,im.bmodedata0',im.theta)';
+nanmask = 10*db(double(im.cc(:,:,15))/255)+db(bmodedata0)>-30;
+nanmask = imclose(imopen(nanmask,strel('disk',3)),strel('disk',3));
+cdata(~nanmask) = nan;
+axidx = 1:find(im.axial>20,1,'first');
+ARFIHandle(i) = imsurf(im.theta,im.axial(axidx),im.apex,cdata(axidx,:),[0 10]);
+set(ARFIHandle(i),'AlphaData',double(nanmask(axidx,:)));
+xd = get(ARFIHandle(i),'zData');
+yd = get(ARFIHandle(i),'yData');
+zd = get(ARFIHandle(i),'xData');
+[xdt ydt zdt] = applyTransformation(xd,yd,zd,CARTO.Frames(ResIdx).XducerToWorldMatrix);
+set(ARFIHandle(i),'XData',xdt,'YData',ydt,'ZData',zdt);
+set(ARFIHandle(i),'FaceLighting','none','FaceAlpha','Flat')
+end
+end
+CARTO.ARFIHandle = ARFIHandle(find(ARFIHandle));
+
+%%
+if isfield(CARTO,'CartoPoints') && ~isempty(CARTO.CartoPoints)
+CARTO.PointsHandle = drawCartoPoints(CARTO.CartoPoints,CARTO.Tags);
+end
+
+%%
+%%
+
+
+
+axis image
+

@@ -1,0 +1,15 @@
+im.sc.min_phi = min(im.theta);
+im.sc.span_phi = max(im.theta)-min(im.theta);
+[A.arfidata A.axial A.lat] = Scan_Convert_Sector(im.arfidata,im.sc);
+[A.bimg A.baxial A.blat] = Scan_Convert_Sector(im.bmodedata0,im.scB);
+x0 = CARTO.Contours(resIdx).X;
+y0 = CARTO.Contours(resIdx).Y;
+z0 = CARTO.Contours(resIdx).Z;
+[xc yc zc] = applyTransformation(x0,y0,z0,inv(CARTO.Frames(resIdx).XducerToWorldMatrix')');
+xf = CARTO.Frames(resIdx).X;
+yf = CARTO.Frames(resIdx).Y;
+zf = CARTO.Frames(resIdx).Z;
+[xt yt zt] = applyTransformation(xf,yf,zf,CARTO.Frames(resIdx).XducerToWorldMatrix);
+[xt1 yt1 zt1] = applyTransformation(xt,yt,zt,inv(CARTO.Frames(resIdx).XducerToWorldMatrix')');
+BW = roipoly(A.blat,A.baxial,A.bimg,[0;zc],[10*im.sc.apex;yc]);
+BW2 = roipoly(A.blat,A.baxial,A.bimg,[0;zf],[10*im.sc.apex;yf]);
