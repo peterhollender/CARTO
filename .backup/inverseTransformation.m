@@ -1,9 +1,0 @@
-function [x y z] = inverseTransformation(x0,y0,z0,TMatrix)
-x = x0;
-y = y0;
-z = z0;
-xyz0 = [x(:) y(:) z(:) 1+0*x(:)].';
-xyz = TMatrix * xyz0;
-x(:) = xyz(1,:);
-y(:) = xyz(2,:);
-z(:) = xyz(3,:);
