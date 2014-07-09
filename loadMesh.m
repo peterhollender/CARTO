@@ -41,7 +41,7 @@ end
 Mesh.Triangles = Triangles;
 
 [err msg] = system(sprintf('grep "%s" %s','VerticesColorsSection',MeshFile));
-if ~err
+if ~err || ispc
 while isempty(strfind(s,'[VerticesColorsSection]'));
     s = fgetl(fid);
 end
@@ -62,7 +62,7 @@ Mesh.VerticesColors = VerticesColors;
 end
 
 [err msg] = system(sprintf('grep "%s" %s','VerticesAttributesSection',MeshFile));
-if ~err
+if ~err || ispc
 while isempty(strfind(s,'[VerticesAttributesSection]'));
     s = fgetl(fid);
 end

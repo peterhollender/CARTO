@@ -12,10 +12,11 @@
 
 % Peter Hollender
 
-FramesetIdx = 2; % Which set of Frames/ResFiles you want to align (set to 1 if you only have one pair)
+FramesetIdx = 1; % Which set of Frames/ResFiles you want to align (set to 1 if you only have one pair)
 
 numCartoFrames = length(CARTO.Frames{FramesetIdx});
 resIndices = 1:numCartoFrames; %Default 1:1 matching
+%resIndices = [1:15 17:33]
 
 %resIndices = [5:14 16:37 40:43]; % Your guess for which res file indices will align with the CARTO Frames
 %% Load "2014" template to search the saved CARTO BMP for the command window and the location of the timestamp
@@ -66,11 +67,11 @@ for frameIdx = 1:min(numCartoFrames,length(resIndices));
     axis image
     pause(0.1);
     axis(axLim);
-    title(sprintf('(%g) %s',resIndices(frameIdx),strrep(resFile(5+[0:13]),'_','\_')),'fontsize',16)
+    title(sprintf('(%g) %s',resIndices(frameIdx),strrep(resFile(end-17:end-4),'_','\_')),'fontsize',16)
     ylabel(frameIdx)
 end
 set(sp,'XTick',[],'YTick',[])
     
 
-fprintf('\nUserMapIndex.resFileNames{FramesetIdx} = UserMapIndex.resFileNames{FramesetIdx}(useIdx);\n')
+fprintf('\nUserMapIndex.resFileNames{FramesetIdx} = UserMapIndex.resFileNames{FramesetIdx}(resIndices);\n')
 
