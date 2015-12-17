@@ -60,7 +60,9 @@ if ~exist(pngdir,'dir')
 end
 
 figH = 1;
-figure(figH);clf
+if ishandle(figH);close(figH);end
+figure(figH);
+drawnow
 if black
 colordef(figH,'black')
 else
@@ -78,7 +80,11 @@ for fieldIdx = 1:4
     imData = imDataMask.(fields{fieldIdx});
     if fieldIdx == 1;
     %drawColorized(imData.lat,imData.axial,ptmask(:,:,frameIndex),(0.3+0.7*(min(1,ptmask(:,:,frameIndex)/3))).*(ptmask(:,:,frameIndex)>0),imDataMasked(2).BMODE.cData(:,:,frameIndex),jet,[0 1]);        
+    if setIdx == 1
+    image(imData.lat,imData.axial,imDataMasked(setIdx).BMODE.cData(:,:,[1 1 1]*frameIndex));
+    else
     drawColorized(imData.lat,imData.axial,heatmap(:,:,frameIndex),heatmap(:,:,frameIndex).^2,imDataMasked(setIdx).BMODE.cData(:,:,frameIndex),jet,[0 1]);            
+    end
     axis image
     else
     imh = imagesc(imData.lat,imData.axial,imData.cData(:,:,frameIndex),imData.clim);
@@ -111,7 +117,7 @@ if print_on
     else
         print('-depsc',fullfile(epsdir,figname));
     end
-    set(sp,'xlim',[-12 12],'ylim',[0 20]);
+    set(sp,'xlim',[-11 11],'ylim',[0 20]);
     sprintf('zoomed_%s_%s_frame_%03.0f',datepath,expPaths{setIdx},frameIndex);
     if black
         print('-dpng',fullfile(pngdir,figname));

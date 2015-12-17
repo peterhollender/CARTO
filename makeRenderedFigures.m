@@ -56,7 +56,7 @@ for setIdx = 2;
     else
         disp('CHECK FRAMEINDICES')
         figure(3);
-        for i = 1:size(imData.cData,3);draw_imData(imDataMask,i,'bmode');suptitle(sprintf('%0.0f',i));pause;end
+        for i = 1:size(imDataMask.cData,3);draw_imData(imDataMask,i,'bmode');suptitle(sprintf('%0.0f',i));pause;end
         FrameIndices = 1:size(imData.cData,3);
         return
     end
@@ -144,11 +144,13 @@ for setIdx = 2;
         for pointIndex = 1:length(CARTO.CartoPoints);
             PointsHandle{pointIndex} = drawCartoPoints(CARTO.CartoPoints{pointIndex},CARTO.Tags);
         end
+        set([PointsHandle{:}],'facecolor','r','edgecolor','none','facealpha',0.25);
+
         for MeshIndex = 1:length(CARTO.Mesh);
             MeshHandle(MeshIndex) = drawCartoMesh(CARTO.Mesh(MeshIndex));
         end
-        set([PointsHandle{:}],'facecolor','r','edgecolor','none','facealpha',0.25);
         set(MeshHandle,'edgecolor','c','edgealpha',0.1,'facecolor','none');
+        
         axis image
         set(gca,'CameraTarget',mean(CenterVec),'CameraPosition',mean(CenterVec)+50*GlobalVector,'CameraUpVector',cross(GlobalVector,GlobalNormal),'CameraViewAngle',20,'Projection','perspective')
         set(gca,'XTick',[],'YTick',[],'ZTick',[],'box','on')
